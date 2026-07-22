@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>محاسبه زمان حضور</title>
+    
+    <!-- PWA Metadata & iOS Apple Touch Icon -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="زمان حضور">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" href="apple-touch-icon.png">
+
+    <style>
+        /* Apple Precise iOS Design Tokens */
+        :root {
+            --bg-color: #f2f2f7;
+            --card-bg: #ffffff;
+            --text-main: #000000;
+            --text-muted: rgba(0, 0, 0, 0.4);
+            --accent-blue: #007aff;
+            --accent-orange: #ff9500;
+            --gold-primary: #ffd700;
+            --pill-bg: rgba(0, 0, 0, 0.06);
+            --card-radius: 20px;
+            --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .dark {
+            --bg-color: #000000;
+            --card-bg: #1c1c1e;
+            --text-main: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.4);
+            --accent-blue: #0a84ff;
+            --accent-orange: #ff9f0a;
+            --gold-primary: #ffe066;
+            --pill-bg: rgba(255, 255, 255, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            transition: background-color 0.25s ease, color 0.25s ease;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
+            max-width: 380px;
+            margin: 0 auto;
+            padding: 10px 16px 8px 16px;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2px 0 4px 0;
+        }
+
+        /* Golden Chronometer Badge */
+        .golden-stopwatch {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ffe066 0%, #d4af37 50%, #aa7c11 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 14px rgba(212, 175, 55, 0.35);
+            margin-bottom: 4px;
+            position: relative;
+        }
+
+        .golden-stopwatch::after {
+            content: '';
+            position: absolute;
+            inset: 2px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.4), transparent 60%);
+            pointer-events: none;
+        }
+
+        .golden-stopwatch svg {
+            width: 22px;
+            height: 22px;
+            stroke: #121212;
+            stroke-width: 2.2;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .header-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.4px;
+            text-align: center;
+        }
+
+        .theme-toggle-btn {
+            position: absolute;
+            left: 0;
+            top: 8px;
+            background: none;
+            border: none;
+            color: var(--accent-blue);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+            transition: transform 0.2s ease;
+        }
+
+        .theme-toggle-btn:active {
+            transform: scale(0.9);
+        }
+
+        .theme-icon {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+        }
+
+        /* Main Container */
+        main {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .card-section {
+            background-color: var(--card-bg);
+            border-radius: var(--card-radius);
+            padding: 10px 12px;
+            transition: background-color 0.25s ease;
+            overflow: hidden;
+        }
+
+        /* Orange Colored Section Labels */
+        .section-label {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--accent-orange);
+            margin-bottom: 6px;
+            text-align: center;
+            letter-spacing: -0.2px;
+        }
+
+        /* Native-feeling Smooth iOS Wheel Wrapper */
+        .picker-box-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            direction: ltr;
+            position: relative;
+            height: 160px; /* Compact 5 rows for 100vh fit */
+            overflow: hidden;
+            mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+        }
+
+        /* Capsule Selector Bar */
+        .picker-selection-bar {
+            position: absolute;
+            top: 50%;
+            left: 8px;
+            right: 8px;
+            transform: translateY(-50%);
+            height: 36px;
+            background-color: var(--pill-bg);
+            border-radius: 12px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Smooth Physics Scroll Container */
+        .picker-column {
+            flex: 1;
+            height: 100%;
+            overflow-y: scroll;
+            overflow-x: hidden;
+            touch-action: pan-y;
+            scroll-snap-type: y mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            position: relative;
+            z-index: 2;
+        }
+
+        .picker-column::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* 2 Spacer slots (64px) so index 0 settles in center slot */
+        .picker-spacer {
+            height: 62px;
+            flex-shrink: 0;
+        }
+
+        .picker-item {
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.45rem;
+            font-weight: 500;
+            scroll-snap-align: center;
+            color: var(--text-main);
+            opacity: 0.25;
+            transform: scale(0.85);
+            transition: none;
+            cursor: pointer;
+            letter-spacing: -0.5px;
+            width: 100%;
+            text-align: center;
+            will-change: transform, opacity;
+        }
+
+        .picker-separator {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-main);
+            z-index: 2;
+            margin: 0 -2px;
+            opacity: 0.85;
+            transform: translateY(-1px);
+        }
+
+        /* Manual Input Overlay */
+        .manual-input {
+            width: 52px;
+            height: 32px;
+            font-size: 1.25rem;
+            font-weight: 600;
+            text-align: center;
+            border-radius: 8px;
+            border: 1.5px solid var(--accent-orange);
+            outline: none;
+            background-color: var(--card-bg);
+            color: var(--text-main);
+            z-index: 10;
+        }
+
+        /* Output Card */
+        .output-card {
+            background-color: var(--card-bg);
+            border-radius: var(--card-radius);
+            padding: 10px 14px;
+            text-align: center;
+            transition: background-color 0.25s ease;
+        }
+
+        /* Orange Output Title */
+        .output-title {
+            font-size: 0.85rem;
+            color: var(--accent-orange);
+            font-weight: 600;
+            margin-bottom: 2px;
+            letter-spacing: -0.2px;
+        }
+
+        /* Bolder, Larger Output Value */
+        .output-value {
+            font-size: 3.4rem;
+            font-weight: 800;
+            color: var(--accent-blue);
+            letter-spacing: -1.5px;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            padding-bottom: 2px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <header>
+            <button class="theme-toggle-btn" id="themeToggle" aria-label="تغییر تم">
+                <svg class="theme-icon" id="themeIcon" viewBox="0 0 24 24"></svg>
+            </button>
+
+            <!-- Golden Chronometer Stopwatch Icon -->
+            <div class="golden-stopwatch">
+                <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="13" r="8"></circle>
+                    <path d="M12 9v4l2.5 2.5"></path>
+                    <path d="M12 5V3"></path>
+                    <path d="M10 3h4"></path>
+                </svg>
+            </div>
+
+            <div class="header-title">محاسبه زمان حضور</div>
+        </header>
+
+        <main>
+            <!-- Entry Time Picker -->
+            <div class="card-section">
+                <div class="section-label">ساعت ورود</div>
+                <div class="picker-box-wrapper">
+                    <div class="picker-selection-bar"></div>
+                    
+                    <div class="picker-column" id="entryHoursColumn">
+                        <div class="picker-spacer"></div>
+                        <div class="picker-spacer"></div>
+                    </div>
+
+                    <div class="picker-separator">:</div>
+
+                    <div class="picker-column" id="entryMinutesColumn">
+                        <div class="picker-spacer"></div>
+                        <div class="picker-spacer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Duration Time Picker -->
+            <div class="card-section">
+                <div class="section-label">مدت زمان حضور</div>
+                <div class="picker-box-wrapper">
+                    <div class="picker-selection-bar"></div>
+                    
+                    <div class="picker-column" id="durHoursColumn">
+                        <div class="picker-spacer"></div>
+                        <div class="picker-spacer"></div>
+                    </div>
+
+                    <div class="picker-separator">:</div>
+
+                    <div class="picker-column" id="durMinutesColumn">
+                        <div class="picker-spacer"></div>
+                        <div class="picker-spacer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Output Result -->
+            <div class="output-card">
+                <div class="output-title">ساعت خروج مجاز</div>
+                <div class="output-value" id="outputTime">--:--</div>
+            </div>
+        </main>
+
+        <footer>
+            اسکرول روان ۵ عددی به‌سبک iOS
+        </footer>
+    </div>
+
+    <script>
+        // Service Worker Registration
+        if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
+            });
+        }
+
+        // Haptic Feedback Helper
+        function triggerHaptic() {
+            if ('vibrate' in navigator) {
+                try { navigator.vibrate(8); } catch(e) {}
+            }
+        }
+
+        // Theme SVG Icons
+        const sunPath = '<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41s-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41s-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"/>';
+        const moonPath = '<path d="M12.3 2C6.5 2 1.8 6.7 1.8 12.5S6.5 23 12.3 23c4.8 0 8.9-3.1 10.2-7.5-.7.2-1.5.3-2.3.3-5.2 0-9.5-4.3-9.5-9.5 0-1.6.4-3.1 1.1-4.4-1.2-.6-2.5-.9-3.8-.9z"/>';
+
+        // Theme Manager
+        const themeToggleBtn = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const htmlEl = document.documentElement;
+
+        function setTheme(isDark) {
+            if (isDark) {
+                htmlEl.classList.add('dark');
+                themeIcon.innerHTML = sunPath;
+                localStorage.setItem('app_theme', 'dark');
+            } else {
+                htmlEl.classList.remove('dark');
+                themeIcon.innerHTML = moonPath;
+                localStorage.setItem('app_theme', 'light');
+            }
+        }
+
+        const savedTheme = localStorage.getItem('app_theme');
+        setTheme(savedTheme !== 'light');
+
+        themeToggleBtn.addEventListener('click', () => {
+            setTheme(!htmlEl.classList.contains('dark'));
+            triggerHaptic();
+        });
+
+        // Load Saved Values
+        let entryHour = parseInt(localStorage.getItem('entryHour'), 10);
+        let entryMinute = parseInt(localStorage.getItem('entryMinute'), 10);
+        let durHour = parseInt(localStorage.getItem('durHour'), 10);
+        let durMinute = parseInt(localStorage.getItem('durMinute'), 10);
+
+        if (isNaN(entryHour)) entryHour = 7;
+        if (isNaN(entryMinute)) entryMinute = 30;
+        if (isNaN(durHour)) durHour = 8;
+        if (isNaN(durMinute)) durMinute = 15;
+
+        const entryHoursColumn = document.getElementById('entryHoursColumn');
+        const entryMinutesColumn = document.getElementById('entryMinutesColumn');
+        const durHoursColumn = document.getElementById('durHoursColumn');
+        const durMinutesColumn = document.getElementById('durMinutesColumn');
+        const outputDisplay = document.getElementById('outputTime');
+
+        function populatePicker(columnEl, count) {
+            for (let i = 0; i < count; i++) {
+                const item = document.createElement('div');
+                item.className = 'picker-item';
+                item.textContent = String(i).padStart(2, '0');
+                item.dataset.value = i;
+                columnEl.insertBefore(item, columnEl.lastElementChild);
+            }
+        }
+
+        populatePicker(entryHoursColumn, 24);
+        populatePicker(entryMinutesColumn, 60);
+        populatePicker(durHoursColumn, 24);
+        populatePicker(durMinutesColumn, 60);
+
+        // Ultra-Fast Continuous Wheel Engine
+        function setupScrollPicker(columnEl, initialVal, maxVal, onSelect) {
+            const items = columnEl.querySelectorAll('.picker-item');
+            const itemHeight = 32;
+            let lastHapticIndex = initialVal;
+            let isTicking = false;
+
+            // Set initial scroll position
+            columnEl.scrollTop = initialVal * itemHeight;
+
+            // Real-time zero-latency continuous scaling & opacity
+            function updateVisuals() {
+                const scrollTop = columnEl.scrollTop;
+                const exactIndex = scrollTop / itemHeight;
+                const nearestIndex = Math.round(exactIndex);
+
+                items.forEach((item, idx) => {
+                    const dist = Math.abs(idx - exactIndex);
+
+                    if (dist < 2.5) {
+                        const opacity = Math.max(0.2, 1 - (dist * 0.38));
+                        const scale = Math.max(0.85, 1.15 - (dist * 0.15));
+                        const fontWeight = dist < 0.4 ? '600' : '400';
+
+                        item.style.opacity = opacity;
+                        item.style.transform = `scale(${scale})`;
+                        item.style.fontWeight = fontWeight;
+                    } else {
+                        item.style.opacity = '0.2';
+                        item.style.transform = 'scale(0.85)';
+                        item.style.fontWeight = '400';
+                    }
+                });
+
+                if (nearestIndex !== lastHapticIndex && nearestIndex >= 0 && nearestIndex < items.length) {
+                    lastHapticIndex = nearestIndex;
+                    triggerHaptic();
+                }
+
+                isTicking = false;
+            }
+
+            updateVisuals();
+
+            let scrollEndTimer;
+            columnEl.addEventListener('scroll', () => {
+                if (!isTicking) {
+                    requestAnimationFrame(updateVisuals);
+                    isTicking = true;
+                }
+
+                clearTimeout(scrollEndTimer);
+                scrollEndTimer = setTimeout(() => {
+                    const finalIndex = Math.min(Math.max(0, Math.round(columnEl.scrollTop / itemHeight)), items.length - 1);
+                    onSelect(finalIndex);
+                }, 50);
+            }, { passive: true });
+
+            // Direct Click / Type Handler
+            items.forEach((item, idx) => {
+                item.addEventListener('click', () => {
+                    const currentCenterIndex = Math.round(columnEl.scrollTop / itemHeight);
+
+                    if (currentCenterIndex === idx) {
+                        if (item.querySelector('input')) return;
+
+                        const currentVal = item.textContent;
+                        item.textContent = '';
+
+                        const input = document.createElement('input');
+                        input.type = 'number';
+                        input.className = 'manual-input';
+                        input.value = parseInt(currentVal, 10);
+
+                        item.appendChild(input);
+                        input.focus();
+                        input.select();
+
+                        const applyManualValue = () => {
+                            let val = parseInt(input.value, 10);
+                            if (isNaN(val)) val = 0;
+                            val = Math.min(Math.max(0, val), maxVal);
+
+                            input.remove();
+                            item.textContent = String(val).padStart(2, '0');
+
+                            columnEl.scrollTo({
+                                top: val * itemHeight,
+                                behavior: 'smooth'
+                            });
+                            triggerHaptic();
+                            onSelect(val);
+                        };
+
+                        input.addEventListener('blur', applyManualValue);
+                        input.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter') applyManualValue();
+                        });
+                    } else {
+                        columnEl.scrollTo({
+                            top: idx * itemHeight,
+                            behavior: 'smooth'
+                        });
+                        triggerHaptic();
+                        onSelect(idx);
+                    }
+                });
+            });
+        }
+
+        setupScrollPicker(entryHoursColumn, entryHour, 23, (val) => {
+            entryHour = val;
+            localStorage.setItem('entryHour', val);
+            calculateOutTime();
+        });
+
+        setupScrollPicker(entryMinutesColumn, entryMinute, 59, (val) => {
+            entryMinute = val;
+            localStorage.setItem('entryMinute', val);
+            calculateOutTime();
+        });
+
+        setupScrollPicker(durHoursColumn, durHour, 23, (val) => {
+            durHour = val;
+            localStorage.setItem('durHour', val);
+            calculateOutTime();
+        });
+
+        setupScrollPicker(durMinutesColumn, durMinute, 59, (val) => {
+            durMinute = val;
+            localStorage.setItem('durMinute', val);
+            calculateOutTime();
+        });
+
+        function calculateOutTime() {
+            const totalInMinutes = (entryHour * 60) + entryMinute;
+            const totalDurationMinutes = (durHour * 60) + durMinute;
+            const totalOutMinutes = (totalInMinutes + totalDurationMinutes) % (24 * 60);
+
+            const outHours = Math.floor(totalOutMinutes / 60);
+            const outMinutes = totalOutMinutes % 60;
+
+            outputDisplay.textContent = 
+                `${String(outHours).padStart(2, '0')}:${String(outMinutes).padStart(2, '0')}`;
+        }
+
+        calculateOutTime();
+    </script>
+</body>
+</html>
+
